@@ -189,17 +189,6 @@ public class LoginScreen extends AppCompatActivity {
 
 
         cloudSyncHelper.checkUser(user.getUser_id())
-                .retry(3, new Predicate<Throwable>() {
-                    @Override
-                    public boolean test(Throwable throwable) throws Exception {
-                        if (throwable.getCause() instanceof SocketTimeoutException) {
-                            Log.d("Test", "Time out.. Retrying..");
-                            return true;
-                        }
-                        Log.d("Test", "Reached limit");
-                        return false;
-                    }
-                })
                 .flatMap(s -> {
                     return cloudSyncHelper.createUserLocal(user)
                             .onErrorResumeNext(throwable -> {
@@ -213,18 +202,7 @@ public class LoginScreen extends AppCompatActivity {
                             });
                 })
                 .flatMap(id -> {
-                    return cloudSyncHelper.fetchData(id)
-                            .retry(3, new Predicate<Throwable>() {
-                                @Override
-                                public boolean test(Throwable throwable) throws Exception {
-                                    if (throwable.getCause() instanceof SocketTimeoutException) {
-                                        Log.d("Test", "Time out.. Retrying..");
-                                        return true;
-                                    }
-                                    Log.d("Test", "Reached limit");
-                                    return false;
-                                }
-                            });
+                    return cloudSyncHelper.fetchData(id);
                 })
                 .flatMap(notesResponseObject -> {
                     return cloudSyncHelper.saveFetchedData(notesResponseObject);

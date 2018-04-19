@@ -40,7 +40,8 @@ public class CloudSyncHelper {
     public CloudSyncHelper() {
         Log.d("Test", "CloudSyncHelper Constructor Called");
         ClientConfiguration clientConfiguration = new ClientConfiguration();
-        clientConfiguration.setConnectionTimeout(20000);
+        clientConfiguration.setConnectionTimeout(30000);
+        clientConfiguration.setSocketTimeout(30000);
         this.apiClientFactory = new ApiClientFactory().clientConfiguration(clientConfiguration);
         this.apiClient = apiClientFactory.build(DailyNotesAPIClient.class);
     }
