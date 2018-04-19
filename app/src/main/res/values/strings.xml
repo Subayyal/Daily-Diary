@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Daily Notes</string>
+    <string name="previous">U+003C</string>
+    <string name="next">">"</string>
+</resources>

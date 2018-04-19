@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/calender_icon"
+        android:icon="@drawable/ic_action_name"
+        android:title="Calender"
+        app:showAsAction="ifRoom" />
+
+    <item
+        android:id="@+id/delete_icon"
+        android:icon="@drawable/ic_action_name"
+        android:title="Delete"
+        app:showAsAction="never" />
+
+    <item
+        android:id="@+id/sync_icon"
+        android:icon="@drawable/ic_action_name"
+        android:title="Sync with cloud"
+        app:showAsAction="never" />
+</menu>
