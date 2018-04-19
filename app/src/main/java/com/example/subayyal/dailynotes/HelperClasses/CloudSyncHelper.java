@@ -3,8 +3,10 @@ package com.example.subayyal.dailynotes.HelperClasses;
 import android.database.sqlite.SQLiteConstraintException;
 import android.util.Log;
 
+import com.amazonaws.AmazonClientException;
 import com.amazonaws.AmazonServiceException;
 import com.amazonaws.ClientConfiguration;
+import com.amazonaws.mobileconnectors.apigateway.ApiClientException;
 import com.amazonaws.mobileconnectors.apigateway.ApiClientFactory;
 import com.example.subayyal.clientsdk.DailyNotesAPIClient;
 import com.example.subayyal.clientsdk.model.GetNotesResponseObject;
@@ -21,6 +23,8 @@ import com.example.subayyal.dailynotes.LocalDatabase.Entities.NoteEntity;
 import com.example.subayyal.dailynotes.LocalDatabase.Entities.UserEntity;
 import com.google.gson.Gson;
 
+import java.net.SocketException;
+import java.net.SocketTimeoutException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -50,17 +54,22 @@ public class CloudSyncHelper {
     public Single<String> checkUser(String id) {
         return Single.create(new SingleOnSubscribe<String>() {
             @Override
-            public void subscribe(SingleEmitter<String> emitter) throws CheckUserException {
+            public void subscribe(SingleEmitter<String> emitter) throws Exception {
                 try {
                     GetUserResponseObject getUserResponseObject = apiClient.usersIdGet(id);
                     Log.d("Test", "checkUserCall: Status: " + getUserResponseObject.getStatus());
                     emitter.onSuccess(getUserResponseObject.getBody().getUserId());
                 } catch (AmazonServiceException e) {
+                    Log.d("Test", "AmazonServiceException : " + e.getErrorMessage());
                     e.printStackTrace();
-                    emitter.onError(new CheckUserException(Integer.toString(e.getStatusCode())));
+                    if (e.getErrorMessage().equals("timeout")) {
+                        throw new SocketTimeoutException();
+                    } else {
+                        throw new CheckUserException(Integer.toString(e.getStatusCode()));
+                    }
                 } catch (Exception e) {
                     e.printStackTrace();
-                    emitter.onError(new CheckUserException(Integer.toString(AppConstants.ERROR)));
+                    throw new CheckUserException(Integer.toString(AppConstants.ERROR));
                 }
             }
         });
@@ -69,14 +78,18 @@ public class CloudSyncHelper {
     public Single<GetNotesResponseObject> fetchData(String id) {
         return Single.create(new SingleOnSubscribe<GetNotesResponseObject>() {
             @Override
-            public void subscribe(SingleEmitter<GetNotesResponseObject> emitter) throws FetchDataException {
+            public void subscribe(SingleEmitter<GetNotesResponseObject> emitter) throws Exception {
                 try {
                     Log.d("Test", "fetchData Called");
                     GetNotesResponseObject notes = apiClient.usersIdNotesGet(id);
                     emitter.onSuccess(notes);
                 } catch (AmazonServiceException e) {
                     e.printStackTrace();
-                    throw new FetchDataException(Integer.toString(e.getStatusCode()));
+                    if (e.getErrorMessage().equals("timeout")) {
+                        throw new SocketTimeoutException();
+                    } else {
+                        throw new FetchDataException(Integer.toString(e.getStatusCode()));
+                    }
                 } catch (Exception e) {
                     e.printStackTrace();
                     throw new FetchDataException(Integer.toString(AppConstants.ERROR));

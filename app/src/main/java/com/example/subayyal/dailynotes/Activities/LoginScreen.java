@@ -12,6 +12,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ProgressBar;
 
+import com.amazonaws.AmazonClientException;
 import com.amazonaws.auth.CognitoCachingCredentialsProvider;
 import com.amazonaws.mobileconnectors.apigateway.ApiClientException;
 import com.example.subayyal.dailynotes.Exceptions.CheckUserException;
@@ -189,6 +190,17 @@ public class LoginScreen extends AppCompatActivity {
 
 
         cloudSyncHelper.checkUser(user.getUser_id())
+                .retry(3, new Predicate<Throwable>() {
+                    @Override
+                    public boolean test(Throwable throwable) throws Exception {
+                        Log.d("Test", throwable.toString());
+                        if (throwable instanceof SocketTimeoutException) {
+                            Log.d("Test", "Time out.. Retrying..");
+                            return true;
+                        }
+                        return false;
+                    }
+                })
                 .flatMap(s -> {
                     return cloudSyncHelper.createUserLocal(user)
                             .onErrorResumeNext(throwable -> {
@@ -202,7 +214,18 @@ public class LoginScreen extends AppCompatActivity {
                             });
                 })
                 .flatMap(id -> {
-                    return cloudSyncHelper.fetchData(id);
+                    return cloudSyncHelper.fetchData(id)
+                            .retry(3, new Predicate<Throwable>() {
+                                @Override
+                                public boolean test(Throwable throwable) throws Exception {
+                                    Log.d("Test", throwable.toString());
+                                    if (throwable instanceof SocketTimeoutException) {
+                                        Log.d("Test", "Time out.. Retrying..");
+                                        return true;
+                                    }
+                                    return false;
+                                }
+                            });
                 })
                 .flatMap(notesResponseObject -> {
                     return cloudSyncHelper.saveFetchedData(notesResponseObject);
@@ -226,6 +249,15 @@ public class LoginScreen extends AppCompatActivity {
 
                     @Override
                     public void onError(Throwable e) {
+
+                        if (e instanceof SocketTimeoutException) {
+                            googleSignInButton.setEnabled(true);
+                            progressBar.setVisibility(View.GONE);
+                            Log.d("Test", "Socket Time Out");
+                            Utils.createToast(LoginScreen.this, "Socket timed out");
+                            return;
+                        }
+
                         int code = Integer.parseInt(e.getMessage());
                         Log.d("Test", "onError Called");
                         if (e instanceof CheckUserException) {
