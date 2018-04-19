@@ -13,6 +13,7 @@ import android.widget.Button;
 import android.widget.ProgressBar;
 
 import com.amazonaws.auth.CognitoCachingCredentialsProvider;
+import com.amazonaws.mobileconnectors.apigateway.ApiClientException;
 import com.example.subayyal.dailynotes.Exceptions.CheckUserException;
 import com.example.subayyal.dailynotes.Exceptions.CreateUserLocalException;
 import com.example.subayyal.dailynotes.Exceptions.FetchDataException;
@@ -34,6 +35,7 @@ import com.google.android.gms.common.SignInButton;
 import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.tasks.Task;
 
+import java.net.SocketTimeoutException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -41,6 +43,7 @@ import io.reactivex.Single;
 import io.reactivex.SingleObserver;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.Disposable;
+import io.reactivex.functions.Predicate;
 import io.reactivex.schedulers.Schedulers;
 
 public class LoginScreen extends AppCompatActivity {
@@ -186,6 +189,17 @@ public class LoginScreen extends AppCompatActivity {
 
 
         cloudSyncHelper.checkUser(user.getUser_id())
+                .retry(3, new Predicate<Throwable>() {
+                    @Override
+                    public boolean test(Throwable throwable) throws Exception {
+                        if (throwable.getCause() instanceof SocketTimeoutException) {
+                            Log.d("Test", "Time out.. Retrying..");
+                            return true;
+                        }
+                        Log.d("Test", "Reached limit");
+                        return false;
+                    }
+                })
                 .flatMap(s -> {
                     return cloudSyncHelper.createUserLocal(user)
                             .onErrorResumeNext(throwable -> {
@@ -199,7 +213,18 @@ public class LoginScreen extends AppCompatActivity {
                             });
                 })
                 .flatMap(id -> {
-                    return cloudSyncHelper.fetchData(id);
+                    return cloudSyncHelper.fetchData(id)
+                            .retry(3, new Predicate<Throwable>() {
+                                @Override
+                                public boolean test(Throwable throwable) throws Exception {
+                                    if (throwable.getCause() instanceof SocketTimeoutException) {
+                                        Log.d("Test", "Time out.. Retrying..");
+                                        return true;
+                                    }
+                                    Log.d("Test", "Reached limit");
+                                    return false;
+                                }
+                            });
                 })
                 .flatMap(notesResponseObject -> {
                     return cloudSyncHelper.saveFetchedData(notesResponseObject);
@@ -286,7 +311,7 @@ public class LoginScreen extends AppCompatActivity {
                     public void onSuccess(String String) {
                         googleSignInButton.setEnabled(true);
                         progressBar.setVisibility(View.GONE);
-                        getSharedPreferences(AppConstants.AppName, MODE_PRIVATE).edit().putBoolean("isFirstRun", true).apply();
+                        getSharedPreferences(AppConstants.AppName, MODE_PRIVATE).edit().putBoolean("isFirstRun", false).apply();
                         startActivity(new Intent(LoginScreen.this, HomeScreen.class));
                     }
 
